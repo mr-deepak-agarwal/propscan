@@ -1,8 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFParse } from "pdf-parse";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+// pdf-parse pulls in pdfjs-dist, which references browser-only globals
+// (DOMMatrix, Path2D, ImageData) in some code paths even when only
+// extracting text. Vercel's Node.js serverless runtime doesn't provide
+// these, so we stub them out before pdf-parse is imported.
+function installPdfJsBrowserPolyfills() {
+  const g = globalThis as Record<string, unknown>;
+  if (typeof g.DOMMatrix === "undefined") {
+    g.DOMMatrix = class DOMMatrix {
+      a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+      constructor(_init?: unknown) {}
+      multiplySelf() { return this; }
+      translateSelf() { return this; }
+      scaleSelf() { return this; }
+      invertSelf() { return this; }
+    };
+  }
+  if (typeof g.Path2D === "undefined") {
+    g.Path2D = class Path2D {
+      constructor(_path?: unknown) {}
+      moveTo() {}
+      lineTo() {}
+      closePath() {}
+      rect() {}
+      arc() {}
+      bezierCurveTo() {}
+    };
+  }
+  if (typeof g.ImageData === "undefined") {
+    g.ImageData = class ImageData {
+      data: Uint8ClampedArray;
+      width: number;
+      height: number;
+      constructor(dataOrWidth: Uint8ClampedArray | number, widthOrHeight: number, height?: number) {
+        if (dataOrWidth instanceof Uint8ClampedArray) {
+          this.data = dataOrWidth;
+          this.width = widthOrHeight;
+          this.height = height ?? 0;
+        } else {
+          this.width = dataOrWidth;
+          this.height = widthOrHeight;
+          this.data = new Uint8ClampedArray(this.width * this.height * 4);
+        }
+      }
+    };
+  }
+}
+installPdfJsBrowserPolyfills();
+
+// Imported dynamically-via-require AFTER polyfills are installed above,
+// so pdf-parse's internal pdfjs-dist module sees the stubbed globals
+// the first time it's evaluated.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PDFParse } = require("pdf-parse");
 
 const ANALYSIS_PROMPT = `You are a forensic proposal auditor with 20 years of experience reviewing vendor contracts and proposals. You have seen every trick vendors use to exploit clients — vague scope, payment traps, IP grabs, missing discovery phases, and unrealistic timelines.
 
