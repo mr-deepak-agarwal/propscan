@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PDFParse } from "pdf-parse";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,13 +51,14 @@ Red flag severity:
 Be blunt. If this is a bad proposal, say so clearly. If it's a good one, acknowledge that too.`;
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: buffer });
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(buffer);
-    return data.text;
+    const result = await parser.getText();
+    return result.text;
   } catch {
     throw new Error("Could not read PDF. Please ensure it is a text-based PDF, not a scanned image.");
+  } finally {
+    await parser.destroy();
   }
 }
 
