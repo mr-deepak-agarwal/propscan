@@ -120,8 +120,11 @@ export async function POST(req: NextRequest) {
           ],
           generationConfig: {
             temperature: 0.4,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
             responseMimeType: "application/json",
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
       });
@@ -139,7 +142,17 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiData = await response.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const candidate = geminiData.candidates?.[0];
+    const rawText = candidate?.content?.parts?.[0]?.text || "";
+    const finishReason = candidate?.finishReason;
+
+    if (finishReason === "MAX_TOKENS") {
+      console.error("Gemini hit MAX_TOKENS. Raw text so far:", rawText.slice(0, 500));
+      return NextResponse.json(
+        { error: "Analysis response was too long and got cut off. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Parse JSON from Gemini's response
     let analysisResult;
@@ -147,8 +160,13 @@ export async function POST(req: NextRequest) {
       // Strip any markdown fences, in case the model adds them anyway
       const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       analysisResult = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse Gemini response:", rawText.slice(0, 500));
+    } catch (parseErr) {
+      console.error(
+        "Failed to parse Gemini response. Error:",
+        parseErr,
+        "Raw text:",
+        rawText.slice(0, 1000)
+      );
       return NextResponse.json({ error: "Failed to parse analysis results. Please try again." }, { status: 500 });
     }
 
