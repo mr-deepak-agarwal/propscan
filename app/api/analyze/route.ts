@@ -108,7 +108,10 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
     const result = await parser.getText();
     return result.text;
-  } catch {
+  } catch (err) {
+    // TEMP DEBUG: log the real underlying error so it shows up in Vercel
+    // function logs. Remove this console.error once the root cause is found.
+    console.error("pdf-parse getText() failed:", err);
     throw new Error("Could not read PDF. Please ensure it is a text-based PDF, not a scanned image.");
   } finally {
     await parser.destroy();
