@@ -1,61 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-// pdf-parse pulls in pdfjs-dist, which references browser-only globals
-// (DOMMatrix, Path2D, ImageData) in some code paths even when only
-// extracting text. Vercel's Node.js serverless runtime doesn't provide
-// these, so we stub them out before pdf-parse is imported.
-function installPdfJsBrowserPolyfills() {
-  const g = globalThis as Record<string, unknown>;
-  if (typeof g.DOMMatrix === "undefined") {
-    g.DOMMatrix = class DOMMatrix {
-      a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-      constructor(_init?: unknown) {}
-      multiplySelf() { return this; }
-      translateSelf() { return this; }
-      scaleSelf() { return this; }
-      invertSelf() { return this; }
-    };
-  }
-  if (typeof g.Path2D === "undefined") {
-    g.Path2D = class Path2D {
-      constructor(_path?: unknown) {}
-      moveTo() {}
-      lineTo() {}
-      closePath() {}
-      rect() {}
-      arc() {}
-      bezierCurveTo() {}
-    };
-  }
-  if (typeof g.ImageData === "undefined") {
-    g.ImageData = class ImageData {
-      data: Uint8ClampedArray;
-      width: number;
-      height: number;
-      constructor(dataOrWidth: Uint8ClampedArray | number, widthOrHeight: number, height?: number) {
-        if (dataOrWidth instanceof Uint8ClampedArray) {
-          this.data = dataOrWidth;
-          this.width = widthOrHeight;
-          this.height = height ?? 0;
-        } else {
-          this.width = dataOrWidth;
-          this.height = widthOrHeight;
-          this.data = new Uint8ClampedArray(this.width * this.height * 4);
-        }
-      }
-    };
-  }
-}
-installPdfJsBrowserPolyfills();
-
-// Imported dynamically-via-require AFTER polyfills are installed above,
-// so pdf-parse's internal pdfjs-dist module sees the stubbed globals
-// the first time it's evaluated.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require("pdf-parse");
 
 const ANALYSIS_PROMPT = `You are a forensic proposal auditor with 20 years of experience reviewing vendor contracts and proposals. You have seen every trick vendors use to exploit clients — vague scope, payment traps, IP grabs, missing discovery phases, and unrealistic timelines.
 
@@ -104,17 +51,14 @@ Red flag severity:
 Be blunt. If this is a bad proposal, say so clearly. If it's a good one, acknowledge that too.`;
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer });
   try {
-    const result = await parser.getText();
-    return result.text;
+    const uint8 = new Uint8Array(buffer);
+    const pdf = await getDocumentProxy(uint8);
+    const { text } = await extractText(pdf, { mergePages: true });
+    return text;
   } catch (err) {
-    // TEMP DEBUG: log the real underlying error so it shows up in Vercel
-    // function logs. Remove this console.error once the root cause is found.
-    console.error("pdf-parse getText() failed:", err);
+    console.error("unpdf extraction failed:", err);
     throw new Error("Could not read PDF. Please ensure it is a text-based PDF, not a scanned image.");
-  } finally {
-    await parser.destroy();
   }
 }
 
