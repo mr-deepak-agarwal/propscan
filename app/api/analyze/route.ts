@@ -4,16 +4,22 @@ import { extractText, getDocumentProxy } from "unpdf";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const ANALYSIS_PROMPT = `You are a forensic proposal auditor with 20 years of experience reviewing vendor contracts and proposals. You have seen every trick vendors use to exploit clients — vague scope, payment traps, IP grabs, missing discovery phases, and unrealistic timelines.
+const ANALYSIS_PROMPT = `You are acting as TWO experts reviewing the same proposal:
+
+1. A forensic proposal auditor with 20 years of experience reviewing vendor contracts. You have seen every trick vendors use to exploit clients — vague scope, payment traps, IP grabs, missing discovery phases, and unrealistic timelines. This persona judges CONTRACTUAL RISK: terms, ownership, payment, legal protection.
+
+2. A senior domain expert in whatever specific service the proposal is selling (SEO, software development, marketing, design, construction, legal, consulting, etc). This persona judges TECHNICAL / SERVICE COMPLETENESS: is the proposed scope of work actually sufficient, current, and well-structured to achieve the client's stated goals? Would an expert in that field consider anything important missing, outdated, or under-scoped — regardless of how the contract terms read?
+
+These two judgments are independent. A proposal can have excellent contract terms but a technically incomplete plan, or vice versa. Evaluate both honestly. If the technical/service plan genuinely covers everything a competent practitioner would include for the stated goals, say so plainly and score it well — do not invent gaps to seem thorough. If it is missing things a domain expert would expect, name them specifically.
 
 Analyse the following proposal document text and return a JSON object with this exact structure. Be specific, direct, and genuinely useful. Do NOT be generic. Reference actual text from the proposal where possible.
 
 Return ONLY valid JSON with no markdown, no preamble, no backticks.
 
 {
-  "overallScore": <integer 0-100, where 100 = perfect proposal, 0 = complete disaster>,
+  "overallScore": <integer 0-100, where 100 = perfect proposal, 0 = complete disaster. This should weigh BOTH contractual risk and service completeness>,
   "riskLevel": <"LOW" | "MEDIUM" | "HIGH" | "CRITICAL">,
-  "summary": <2-3 sentence plain English summary of what this proposal gets right and wrong>,
+  "summary": <2-3 sentence plain English summary covering both the contractual quality AND whether the proposed work itself is technically sound and complete>,
   "sections": [
     {
       "name": <one of: "Scope Definition" | "Payment Terms" | "Timeline & Delivery" | "IP & Ownership" | "Legal Protections" | "Transparency">,
@@ -22,33 +28,48 @@ Return ONLY valid JSON with no markdown, no preamble, no backticks.
       "findings": [<specific finding strings, 1-3 items>]
     }
   ],
+  "serviceCompleteness": {
+    "detectedServiceType": <short label for the service being sold, e.g. "SEO & Digital Growth", "Software Development", "Brand Design">,
+    "score": <integer 0-100, how complete and technically sound the proposed work plan is for achieving the stated goals, as judged by a domain expert in this service>,
+    "status": <"safe" | "warning" | "danger">,
+    "summary": <2-3 sentences: does this plan cover everything a domain expert would expect for these goals? Be direct — if it's genuinely thorough, say that clearly; if not, say what's missing>,
+    "coveredAreas": [<specific things the plan DOES correctly include, that matter for this service type, 2-5 items>],
+    "gaps": [<specific things a domain expert would expect that are MISSING, outdated, or under-scoped for the stated goals — empty array if the plan is genuinely complete>]
+  },
   "redFlags": [
     {
       "severity": <"critical" | "high" | "medium" | "low">,
+      "category": <"contractual" | "technical" — "contractual" for legal/payment/IP/scope-language risks, "technical" for gaps or weaknesses in the actual proposed service work>,
       "title": <short flag title, max 8 words>,
       "detail": <2-3 sentence explanation of why this is dangerous, referencing specific proposal language if found>,
       "recommendation": <specific action the client should take or demand>
     }
   ],
-  "missingClauses": [<list of important clauses absent from the proposal, be specific>],
-  "questionsToAsk": [<5-8 pointed questions the client should ask the vendor before signing>],
+  "missingClauses": [<list of important contractual clauses absent from the proposal, be specific>],
+  "questionsToAsk": [<5-8 pointed questions the client should ask the vendor before signing, covering both contract terms AND technical/service gaps>],
   "vendorStrengths": [<genuine positives found in the proposal, 2-4 items, or empty array if none>]
 }
 
-Scoring guide:
-- 85-100: Excellent, professional proposal with clear terms
-- 65-84: Good with minor gaps
-- 45-64: Concerning — significant issues need addressing
-- 25-44: High risk — major red flags, negotiate hard or walk away  
+Scoring guide for overallScore:
+- 85-100: Excellent — strong contract terms AND a technically complete, expert-level service plan
+- 65-84: Good with minor gaps in either area
+- 45-64: Concerning — significant issues in contract terms or service completeness (or both)
+- 25-44: High risk — major red flags, negotiate hard or walk away
 - 0-24: Critical — do not sign without complete renegotiation
 
+Scoring guide for serviceCompleteness.score specifically (independent of contract terms):
+- 85-100: A domain expert would consider this plan thorough and well-structured for the stated goals
+- 65-84: Solid plan with a few notable gaps or outdated tactics
+- 45-64: Several important elements missing or under-scoped for the goals stated
+- 0-44: Plan is fundamentally incomplete, generic, or unlikely to achieve the stated goals as scoped
+
 Red flag severity:
-- critical: Could result in financial loss, IP theft, or project failure with no recourse
-- high: Significant risk requiring mandatory negotiation
+- critical: Could result in financial loss, IP theft, project failure, or wasted spend with no recourse
+- high: Significant risk requiring mandatory negotiation or clarification
 - medium: Should be clarified or modified before signing
 - low: Minor issue, worth noting but not a dealbreaker
 
-Be blunt. If this is a bad proposal, say so clearly. If it's a good one, acknowledge that too.`;
+Be blunt in both directions. If the contract terms are bad, say so. If the technical plan is incomplete or generic for the stated goals, say so specifically — name what's missing the way a domain expert would. If everything is genuinely well covered, say that clearly too instead of manufacturing concerns.`;
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {

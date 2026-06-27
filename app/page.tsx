@@ -17,6 +17,7 @@ export interface AnalysisResult {
   }[];
   redFlags: {
     severity: "critical" | "high" | "medium" | "low";
+    category?: "contractual" | "technical";
     title: string;
     detail: string;
     recommendation: string;
@@ -24,6 +25,14 @@ export interface AnalysisResult {
   missingClauses: string[];
   questionsToAsk: string[];
   vendorStrengths: string[];
+  serviceCompleteness?: {
+    detectedServiceType: string;
+    score: number;
+    status: "safe" | "warning" | "danger";
+    summary: string;
+    coveredAreas: string[];
+    gaps: string[];
+  };
   truncated?: boolean;
 }
 

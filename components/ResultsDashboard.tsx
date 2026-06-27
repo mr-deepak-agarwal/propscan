@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ShieldAlert, MessageCircleQuestion, CheckCircle2, Info } from "lucide-react";
+import { AlertTriangle, ShieldAlert, MessageCircleQuestion, CheckCircle2, Info, Wrench } from "lucide-react";
 import type { AnalysisResult } from "@/app/page";
 
 interface Props {
@@ -19,6 +19,11 @@ const SEVERITY_CONFIG = {
   high: { label: "HIGH", color: "#FBBF24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)" },
   medium: { label: "MEDIUM", color: "#F5A623", bg: "rgba(245,166,35,0.1)", border: "rgba(245,166,35,0.25)" },
   low: { label: "LOW", color: "#22C55E", bg: "rgba(34,197,94,0.1)", border: "rgba(34,197,94,0.25)" },
+};
+
+const CATEGORY_CONFIG = {
+  contractual: { label: "CONTRACT", color: "#A78BFA" },
+  technical: { label: "TECHNICAL", color: "#38BDF8" },
 };
 
 const RISK_CONFIG = {
@@ -206,6 +211,95 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
           </div>
         </div>
 
+        {/* Service Completeness — is the actual proposed work technically sound & complete */}
+        {results.serviceCompleteness && (
+          <div
+            className="section-card"
+            style={{
+              padding: 24,
+              marginBottom: 24,
+              border: `1px solid ${
+                results.serviceCompleteness.status === "safe"
+                  ? "rgba(34,197,94,0.25)"
+                  : results.serviceCompleteness.status === "warning"
+                  ? "rgba(251,191,36,0.25)"
+                  : "rgba(255,59,59,0.25)"
+              }`,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+              <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+                <Wrench size={16} color="#38BDF8" /> Service Completeness — {results.serviceCompleteness.detectedServiceType}
+              </h2>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 700,
+                  color:
+                    results.serviceCompleteness.status === "safe"
+                      ? "#22C55E"
+                      : results.serviceCompleteness.status === "warning"
+                      ? "#FBBF24"
+                      : "#FF3B3B",
+                }}
+              >
+                {results.serviceCompleteness.score}/100
+              </span>
+            </div>
+
+            <StatusBar score={results.serviceCompleteness.score} status={results.serviceCompleteness.status} />
+
+            <p style={{ fontSize: 13, color: "#ccc", lineHeight: 1.6, margin: "16px 0 20px" }}>
+              {results.serviceCompleteness.summary}
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              {results.serviceCompleteness.coveredAreas.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 11, color: "#22C55E", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, letterSpacing: "0.06em", marginBottom: 10 }}>
+                    WHAT&apos;S COVERED
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {results.serviceCompleteness.coveredAreas.map((a, i) => (
+                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#ccc", lineHeight: 1.5 }}>
+                        <span style={{ color: "#22C55E", flexShrink: 0 }}>✓</span>
+                        {a}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {results.serviceCompleteness.gaps.length > 0 ? (
+                <div>
+                  <p style={{ fontSize: 11, color: "#FF3B3B", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, letterSpacing: "0.06em", marginBottom: 10 }}>
+                    GAPS A DOMAIN EXPERT WOULD FLAG
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {results.serviceCompleteness.gaps.map((g, i) => (
+                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#ccc", lineHeight: 1.5 }}>
+                        <span style={{ color: "#FF3B3B", flexShrink: 0 }}>✕</span>
+                        {g}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ fontSize: 11, color: "#22C55E", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, letterSpacing: "0.06em", marginBottom: 10 }}>
+                    GAPS
+                  </p>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#ccc", lineHeight: 1.5 }}>
+                    <CheckCircle2 size={14} color="#22C55E" style={{ flexShrink: 0, marginTop: 1 }} />
+                    No significant gaps found — this plan appears to cover what&apos;s expected for the stated goals.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Red Flags */}
         {results.redFlags.length > 0 && (
           <div className="section-card" style={{ padding: 24, marginBottom: 24 }}>
@@ -223,10 +317,27 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
                     style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 10, padding: "14px 16px", cursor: "pointer", transition: "all 0.2s ease" }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: cfg.color, background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, borderRadius: 4, padding: "2px 8px", letterSpacing: "0.08em" }}>
                           {cfg.label}
                         </span>
+                        {flag.category && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontFamily: "'Space Grotesk', sans-serif",
+                              fontWeight: 700,
+                              color: CATEGORY_CONFIG[flag.category].color,
+                              background: `${CATEGORY_CONFIG[flag.category].color}1A`,
+                              border: `1px solid ${CATEGORY_CONFIG[flag.category].color}40`,
+                              borderRadius: 4,
+                              padding: "2px 8px",
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            {CATEGORY_CONFIG[flag.category].label}
+                          </span>
+                        )}
                         <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 14, color: "#fff" }}>{flag.title}</span>
                       </div>
                       <span style={{ color: "var(--slate)", fontSize: 18, transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>⌄</span>
