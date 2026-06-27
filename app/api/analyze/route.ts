@@ -25,7 +25,7 @@ Return ONLY valid JSON with no markdown, no preamble, no backticks.
       "name": <one of: "Scope Definition" | "Payment Terms" | "Timeline & Delivery" | "IP & Ownership" | "Legal Protections" | "Transparency">,
       "score": <integer 0-100>,
       "status": <"safe" | "warning" | "danger">,
-      "findings": [<specific finding strings, 1-3 items>]
+      "findings": [<specific finding strings, MAXIMUM 3 items>]
     }
   ],
   "serviceCompleteness": {
@@ -33,10 +33,10 @@ Return ONLY valid JSON with no markdown, no preamble, no backticks.
     "score": <integer 0-100, how complete and technically sound the proposed work plan is for achieving the stated goals, as judged by a domain expert in this service>,
     "status": <"safe" | "warning" | "danger">,
     "summary": <2-3 sentences: does this plan cover everything a domain expert would expect for these goals? Be direct — if it's genuinely thorough, say that clearly; if not, say what's missing>,
-    "coveredAreas": [<specific things the plan DOES correctly include, that matter for this service type, 2-5 items>],
-    "gaps": [<specific things a domain expert would expect that are MISSING, outdated, or under-scoped for the stated goals — empty array if the plan is genuinely complete>]
+    "coveredAreas": [<specific things the plan DOES correctly include, that matter for this service type, MAXIMUM 6>],
+    "gaps": [<specific things a domain expert would expect that are MISSING, outdated, or under-scoped for the stated goals — MAXIMUM 6, empty array if the plan is genuinely complete>]
   },
-  "redFlags": [
+  "redFlags": [<the most important issues only, MAXIMUM 10 — prioritise by severity and real-world impact, do not pad with minor items>
     {
       "severity": <"critical" | "high" | "medium" | "low">,
       "category": <"contractual" | "technical" — "contractual" for legal/payment/IP/scope-language risks, "technical" for gaps or weaknesses in the actual proposed service work>,
@@ -45,9 +45,9 @@ Return ONLY valid JSON with no markdown, no preamble, no backticks.
       "recommendation": <specific action the client should take or demand>
     }
   ],
-  "missingClauses": [<list of important contractual clauses absent from the proposal, be specific>],
+  "missingClauses": [<list of important contractual clauses absent from the proposal, be specific, MAXIMUM 8>],
   "questionsToAsk": [<5-8 pointed questions the client should ask the vendor before signing, covering both contract terms AND technical/service gaps>],
-  "vendorStrengths": [<genuine positives found in the proposal, 2-4 items, or empty array if none>]
+  "vendorStrengths": [<genuine positives found in the proposal, MAXIMUM 5, or empty array if none>]
 }
 
 Scoring guide for overallScore:
@@ -109,8 +109,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not extract text from PDF. It may be a scanned image — please use a text-based PDF." }, { status: 400 });
     }
 
-    // Truncate to avoid token limits (keep first ~8000 chars which is ~2000 tokens)
-    const MAX_CHARS = 8000;
+    // gemini-2.5-flash supports a ~1M token input context window, so there's
+    // no need to aggressively truncate normal proposal documents. This cap
+    // exists only to protect against pathologically large uploads (the file
+    // size check above already caps at 10MB) driving up latency/cost — it
+    // should essentially never trigger for a real vendor proposal.
+    const MAX_CHARS = 150000;
     const truncatedText = proposalText.slice(0, MAX_CHARS);
     const wasTruncated = proposalText.length > MAX_CHARS;
 
@@ -141,7 +145,7 @@ export async function POST(req: NextRequest) {
           ],
           generationConfig: {
             temperature: 0.4,
-            maxOutputTokens: 8192,
+            maxOutputTokens: 16384,
             responseMimeType: "application/json",
             thinkingConfig: {
               thinkingBudget: 0,
