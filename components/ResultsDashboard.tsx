@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AlertTriangle, ShieldAlert, MessageCircleQuestion, CheckCircle2, Info } from "lucide-react";
 import type { AnalysisResult } from "@/app/page";
 
 interface Props {
@@ -132,6 +133,13 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
           </div>
         </div>
 
+        {results.truncated && (
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "rgba(245,166,35,0.08)", border: "1px solid rgba(245,166,35,0.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 24, fontSize: 12, color: "var(--slate)" }}>
+            <Info size={15} color="var(--amber)" style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>This document was long enough that only the first portion was analysed. Results above may not reflect clauses later in the proposal.</span>
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
           {/* Section scores */}
           <div className="section-card" style={{ padding: 24 }}>
@@ -167,8 +175,8 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {results.missingClauses.length > 0 && (
               <div className="section-card" style={{ padding: 24 }}>
-                <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, letterSpacing: "-0.01em" }}>
-                  ⚠️ Missing Clauses
+                <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+                  <AlertTriangle size={16} color="var(--danger)" /> Missing Clauses
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {results.missingClauses.map((c, i) => (
@@ -182,8 +190,8 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
             )}
             {results.vendorStrengths.length > 0 && (
               <div className="section-card" style={{ padding: 24 }}>
-                <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, letterSpacing: "-0.01em" }}>
-                  ✓ What Looks Good
+                <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+                  <CheckCircle2 size={16} color="#22C55E" /> What Looks Good
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {results.vendorStrengths.map((s, i) => (
@@ -201,8 +209,8 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
         {/* Red Flags */}
         {results.redFlags.length > 0 && (
           <div className="section-card" style={{ padding: 24, marginBottom: 24 }}>
-            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 20, letterSpacing: "-0.01em" }}>
-              🚨 Red Flags Detected ({results.redFlags.length})
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 20, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+              <ShieldAlert size={16} color="var(--danger)" /> Red Flags Detected ({results.redFlags.length})
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {results.redFlags.map((flag, i) => {
@@ -242,8 +250,8 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
         {/* Questions to ask */}
         {results.questionsToAsk.length > 0 && (
           <div className="section-card" style={{ padding: 24, marginBottom: 24 }}>
-            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, letterSpacing: "-0.01em" }}>
-              💬 Questions to Ask Before You Sign
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+              <MessageCircleQuestion size={16} color="var(--amber)" /> Questions to Ask Before You Sign
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
               {results.questionsToAsk.map((q, i) => (
@@ -264,8 +272,8 @@ export default function ResultsDashboard({ results, fileName, onReset, email, se
                 Not confident in this proposal?
               </h3>
               <p style={{ color: "var(--slate)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-                We build websites at codeq with zero ambiguity — fixed scope, clear milestones, transparent pricing.<br />
-                Drop your email and we&apos;ll share how we do things differently.
+                We build websites at codeq with clearly defined scope, fixed milestones, and transparent pricing.<br />
+                Share your email and we&apos;ll get in touch to talk through your options.
               </p>
               <form onSubmit={onEmailSubmit} style={{ display: "flex", gap: 10, maxWidth: 400, margin: "0 auto" }}>
                 <input

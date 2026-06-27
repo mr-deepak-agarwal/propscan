@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { Search, CreditCard, AlertTriangle, ClipboardList, Copyright, Timer, type LucideIcon } from "lucide-react";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import ScanningOverlay from "@/components/ScanningOverlay";
 
@@ -23,15 +24,16 @@ export interface AnalysisResult {
   missingClauses: string[];
   questionsToAsk: string[];
   vendorStrengths: string[];
+  truncated?: boolean;
 }
 
-const SCAN_ITEMS = [
-  { icon: "🔍", label: "Scope Clarity", desc: "Vague deliverables, undefined revision limits, and scope creep traps" },
-  { icon: "💳", label: "Payment Terms", desc: "Net-90 delays, missing deposits, ambiguous milestone triggers" },
-  { icon: "⚠️", label: "Red Flag Language", desc: "Weasel words like 'reasonable', 'as needed', 'client's discretion'" },
-  { icon: "📋", label: "Missing Clauses", desc: "Discovery phase, change request process, termination rights" },
-  { icon: "©️", label: "IP Ownership", desc: "Ownership before payment, background IP grabs, broad licensing" },
-  { icon: "⏱️", label: "Timeline Realism", desc: "Promises of fast + cheap + quality — flagged when all three appear" },
+const SCAN_ITEMS: { icon: LucideIcon; label: string; desc: string }[] = [
+  { icon: Search, label: "Scope Clarity", desc: "Vague deliverables, undefined revision limits, and scope creep traps" },
+  { icon: CreditCard, label: "Payment Terms", desc: "Net-90 delays, missing deposits, ambiguous milestone triggers" },
+  { icon: AlertTriangle, label: "Red Flag Language", desc: "Weasel words like 'reasonable', 'as needed', 'client's discretion'" },
+  { icon: ClipboardList, label: "Missing Clauses", desc: "Discovery phase, change request process, termination rights" },
+  { icon: Copyright, label: "IP Ownership", desc: "Ownership before payment, background IP grabs, broad licensing" },
+  { icon: Timer, label: "Timeline Realism", desc: "Promises of fast + cheap + quality — flagged when all three appear" },
 ];
 
 export default function Home() {
@@ -145,12 +147,12 @@ export default function Home() {
 
           <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "clamp(36px, 6vw, 58px)", fontWeight: 700, lineHeight: 1.08, letterSpacing: "-0.03em", marginBottom: 20, color: "#fff" }}>
             Upload the proposal.<br />
-            <span style={{ color: "var(--amber)" }}>We&apos;ll tell you</span> if you&apos;re<br />
-            about to get screwed.
+            <span style={{ color: "var(--amber)" }}>Know what you&apos;re</span><br />
+            signing before you sign it.
           </h1>
 
           <p style={{ color: "var(--slate)", fontSize: 17, lineHeight: 1.65, marginBottom: 48, fontFamily: "'Inter', sans-serif" }}>
-            PropScan forensically audits vendor proposals for missing clauses, payment traps, scope landmines, and IP risks. In under 60 seconds.
+            PropScan audits vendor proposals for missing clauses, payment risks, scope gaps, and IP issues — in under 60 seconds.
           </p>
 
           <div
@@ -215,7 +217,7 @@ export default function Home() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
           {SCAN_ITEMS.map((item, i) => (
             <div key={i} className="section-card" style={{ padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
+              <item.icon size={18} color="var(--amber)" style={{ flexShrink: 0, marginTop: 1 }} />
               <div>
                 <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{item.label}</p>
                 <p style={{ color: "var(--slate)", fontSize: 12, lineHeight: 1.5 }}>{item.desc}</p>

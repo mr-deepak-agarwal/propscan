@@ -87,51 +87,71 @@ export async function POST(req: NextRequest) {
     }
 
     // Truncate to avoid token limits (keep first ~8000 chars which is ~2000 tokens)
-    const truncatedText = proposalText.slice(0, 8000);
+    const MAX_CHARS = 8000;
+    const truncatedText = proposalText.slice(0, MAX_CHARS);
+    const wasTruncated = proposalText.length > MAX_CHARS;
 
-    // Call Claude API
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // Call the Gemini API
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "API configuration error" }, { status: 500 });
     }
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: `${ANALYSIS_PROMPT}\n\n---PROPOSAL TEXT START---\n${truncatedText}\n---PROPOSAL TEXT END---`,
+    const GEMINI_MODEL = "gemini-2.5-flash";
+    const callGemini = () =>
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `${ANALYSIS_PROMPT}\n\n---PROPOSAL TEXT START---\n${truncatedText}\n---PROPOSAL TEXT END---`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 4096,
+            responseMimeType: "application/json",
           },
-        ],
-      }),
-    });
+        }),
+      });
+
+    // One retry on transient failure (network blip / 5xx) before giving up
+    let response = await callGemini();
+    if (!response.ok && response.status >= 500) {
+      response = await callGemini();
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error("Claude API error:", errorBody);
+      console.error("Gemini API error:", errorBody);
       return NextResponse.json({ error: "Analysis service unavailable. Please try again." }, { status: 500 });
     }
 
-    const claudeData = await response.json();
-    const rawText = claudeData.content?.[0]?.text || "";
+    const geminiData = await response.json();
+    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Parse JSON from Claude's response
+    // Parse JSON from Gemini's response
     let analysisResult;
     try {
-      // Strip any markdown fences if present
+      // Strip any markdown fences, in case the model adds them anyway
       const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       analysisResult = JSON.parse(cleaned);
     } catch {
-      console.error("Failed to parse Claude response:", rawText.slice(0, 500));
+      console.error("Failed to parse Gemini response:", rawText.slice(0, 500));
       return NextResponse.json({ error: "Failed to parse analysis results. Please try again." }, { status: 500 });
+    }
+
+    if (wasTruncated) {
+      analysisResult.truncated = true;
     }
 
     // Validate required fields

@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "Upload any vendor proposal. Get an instant forensic audit — red flags, missing clauses, payment traps, and a risk score. Free, by codeq.",
   openGraph: {
     title: "PropScan — AI Proposal Health Check",
-    description: "Upload the proposal. We'll tell you if you're about to get screwed.",
+    description: "Upload a vendor proposal and get an instant, AI-powered risk audit before you sign.",
     type: "website",
   },
 };
